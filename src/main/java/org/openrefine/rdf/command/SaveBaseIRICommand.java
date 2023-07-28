@@ -30,7 +30,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.openrefine.rdf.model.Util;
 import org.openrefine.rdf.RDFTransform;
 
-import com.google.refine.model.Project;
+import org.openrefine.model.Project;
 
 import org.apache.jena.iri.IRI;
 

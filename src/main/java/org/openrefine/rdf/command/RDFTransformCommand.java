@@ -25,8 +25,8 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.openrefine.rdf.RDFTransform;
 import org.openrefine.rdf.model.Util;
-import com.google.refine.commands.Command;
-import com.google.refine.model.Project;
+import org.openrefine.commands.Command;
+import org.openrefine.model.Project;
 
 import org.slf4j.Logger;
 

@@ -21,15 +21,15 @@
 
 package org.openrefine.rdf.model.expr;
 
+import java.util.Map;
 import java.util.Properties;
 
-import org.openrefine.rdf.model.Util;
+import org.openrefine.expr.Binder;
+import org.openrefine.model.Cell;
+import org.openrefine.model.Record;
+import org.openrefine.model.Row;
+import org.openrefine.overlay.OverlayModel;
 import org.openrefine.rdf.RDFTransform;
-import com.google.refine.expr.Binder;
-import com.google.refine.model.Cell;
-import com.google.refine.model.Project;
-import com.google.refine.model.Row;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,38 +51,23 @@ import org.slf4j.LoggerFactory;
 public class RDFTransformBinder implements Binder {
     private final static Logger logger = LoggerFactory.getLogger("RDFT:RDFBinder");
 
-    private Project theProject;
-    private String strLastBoundBaseIRI;
-    //private final String strBindError = "Unable to bind baseIRI.";
-
-    public RDFTransformBinder() {
-        super();
-        this.strLastBoundBaseIRI = null;
+    @Override
+    public void initializeBindings(Properties theBindings) {
     }
 
     @Override
-    public void initializeBindings(Properties theBindings, Project theProject) {
-        this.theProject = theProject;
-        if ( Util.isVerbose(3) ) RDFTransformBinder.logger.info("Bind baseIRI...");
-        this.strLastBoundBaseIRI = RDFTransform.getRDFTransform(this.theProject).getBaseIRIAsString();
-        theBindings.put("baseIRI", this.strLastBoundBaseIRI);
-    }
-
-    @Override
-    public void bind(Properties theBindings, Row theRow, int iRowIndex, String strColumnName, Cell theCell) {
+    public void bind(Properties bindings, Row row, long rowIndex, Record record, String columnName, Cell cell, Map<String, OverlayModel> overlayModels, long projectId) {
         //
-        // Update the baseIRI
-        //
-        // The baseIRI is already added by the initializeBindings() above.
-        // The put() call replaces it.
+        // Adds the baseIRI variable to the context, from the RDF transform associated with the project
 
         // Get the current baseIRI...
-        String strCurrentBaseIRI = RDFTransform.getRDFTransform(this.theProject).getBaseIRIAsString();
-        // If the current baseIRI is new...
-        if ( ! this.strLastBoundBaseIRI.equals(strCurrentBaseIRI) ) {
-            // Replace the bound baseIRI...
-            theBindings.put("baseIRI", strCurrentBaseIRI);
-            strLastBoundBaseIRI = strCurrentBaseIRI;
+        RDFTransform theTransform = (RDFTransform) overlayModels.get(RDFTransform.EXTENSION);
+        if (theTransform == null) {
+            // Create a new RDFTransform for the project...
+            theTransform = new RDFTransform(projectId);
         }
+        
+        String strCurrentBaseIRI = theTransform.getBaseIRIAsString();
+        bindings.put("baseIRI", strCurrentBaseIRI);
     }
 }

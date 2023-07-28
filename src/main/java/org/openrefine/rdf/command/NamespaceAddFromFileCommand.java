@@ -40,8 +40,8 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 
-import com.google.refine.ProjectManager;
-import com.google.refine.model.Project;
+import org.openrefine.ProjectManager;
+import org.openrefine.model.Project;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

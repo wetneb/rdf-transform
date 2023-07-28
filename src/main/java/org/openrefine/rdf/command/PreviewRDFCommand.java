@@ -20,35 +20,28 @@
 
 package org.openrefine.rdf.command;
 
-import javax.servlet.ServletException;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.io.ByteArrayOutputStream;
-
-import org.openrefine.rdf.RDFTransform;
-import org.openrefine.rdf.model.Util;
-import org.openrefine.rdf.model.operation.PreviewRDFRecordVisitor;
-import org.openrefine.rdf.model.operation.PreviewRDFRowVisitor;
-import org.openrefine.rdf.model.operation.RDFVisitor;
-
-import com.google.refine.browsing.Engine;
-import com.google.refine.commands.Command;
-import com.google.refine.model.Project;
-import com.google.refine.util.ParsingUtilities;
 
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 //import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.riot.system.StreamRDFWriter;
-
-import com.fasterxml.jackson.databind.JsonNode;
-
+import org.openrefine.browsing.Engine;
+import org.openrefine.commands.Command;
+import org.openrefine.model.Project;
+import org.openrefine.rdf.RDFTransform;
+import org.openrefine.rdf.model.Util;
+import org.openrefine.rdf.model.operation.RDFVisitor;
+import org.openrefine.util.ParsingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class PreviewRDFCommand extends Command {
     private final static Logger logger = LoggerFactory.getLogger("RDFT:PrevRDFCmd");
@@ -58,7 +51,7 @@ public class PreviewRDFCommand extends Command {
 
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+            throws Exception {
         if ( Util.isDebugMode() ) PreviewRDFCommand.logger.info("DEBUG: Reconstructing Transform for Preview...");
         // No CSRF Token required for this command.
 
@@ -71,19 +64,19 @@ public class PreviewRDFCommand extends Command {
             String strTransform = request.getParameter(RDFTransform.KEY);
             if (strTransform == null) {
                 PreviewRDFCommand.logger.info("ERROR: No Transform JSON! Cannot construct preview.");
-                PreviewRDFCommand.respondJSON(response, CodeResponse.error);
+                PreviewRDFCommand.respondJSON(response, 400, CodeResponse.error);
                 return;
             }
             JsonNode jnodeTransform = ParsingUtilities.evaluateJsonStringToObjectNode(strTransform);
             if ( jnodeTransform == null || jnodeTransform.isNull() || jnodeTransform.isEmpty() ) {
                 PreviewRDFCommand.logger.info("ERROR: No Transform JSON Node! Cannot construct preview.");
-                PreviewRDFCommand.respondJSON(response, CodeResponse.error);
+                PreviewRDFCommand.respondJSON(response, 400, CodeResponse.error);
                 return;
             }
             RDFTransform theTransform = RDFTransform.reconstruct(theProject, jnodeTransform);
             if (theTransform == null) {
                 PreviewRDFCommand.logger.info("ERROR: No Transform available! Cannot construct preview.");
-                PreviewRDFCommand.respondJSON(response, CodeResponse.error);
+                PreviewRDFCommand.respondJSON(response, 400, CodeResponse.error);
                 return;
             }
             if ( Util.isDebugMode() ) PreviewRDFCommand.logger.info("DEBUG:   Transform reconstructed.");
@@ -151,17 +144,8 @@ public class PreviewRDFCommand extends Command {
             //
             // Process sample records/rows of data for statements...
             //
-            RDFVisitor theVisitor = null;
-            if ( theProject.recordModel.hasRecords() ) {
-                if ( Util.isDebugMode() ) PreviewRDFCommand.logger.info("DEBUG:     Process by Record Visitor...");
-                theVisitor = new PreviewRDFRecordVisitor(theTransform, theWriter);
-            }
-            else {
-                if ( Util.isDebugMode() ) PreviewRDFCommand.logger.info("DEBUG:     Process by Row Visitor...");
-                theVisitor = new PreviewRDFRowVisitor(theTransform, theWriter);
-            }
-            if ( Util.isDebugMode() ) PreviewRDFCommand.logger.info("DEBUG:     Building the model...");
-            theVisitor.buildModel(theProject, theEngine);
+            RDFVisitor theVisitor = new RDFVisitor(theTransform, theWriter);
+            theVisitor.buildModel(theProject.getCurrentGrid(), theEngine, theProject.getId(), Util.getSampleLimit());
 
             // If Stream Writer, end Stream Writer...
             if (theWriter != null) {
@@ -180,12 +164,12 @@ public class PreviewRDFCommand extends Command {
             if ( Util.isVerbose(4) || Util.isDebugMode() ) PreviewRDFCommand.logger.info("Preview Statements:\n" + strStatements);
 
             // Send back to client...
-            PreviewRDFCommand.respondJSON( response, new CodeResponse(strStatements) );
+            PreviewRDFCommand.respondJSON( response, 200, new CodeResponse(strStatements) );
         }
         catch (Exception ex) {
             PreviewRDFCommand.logger.error("ERROR: Constructing Preview:" + ex.getMessage(), ex);
             if ( Util.isVerbose() || Util.isDebugMode() ) ex.printStackTrace();
-            PreviewRDFCommand.respondJSON(response, CodeResponse.error);
+            throw ex;
         }
     }
 }

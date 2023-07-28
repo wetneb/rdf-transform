@@ -20,15 +20,11 @@
 
 package org.openrefine.rdf.command;
 
-import java.io.IOException;
-
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.refine.commands.Command;
+import org.openrefine.commands.Command;
 import org.openrefine.rdf.model.Util;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +33,7 @@ public class PreferencesCommand extends Command {
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+            throws Exception {
         if ( Util.isVerbose(3) ) PreferencesCommand.logger.info("Setting and Getting preferences...");
         // NOTE: No CSRFToken required for this command.
 
@@ -67,10 +63,9 @@ public class PreferencesCommand extends Command {
         }
         catch (Exception ex) { // ...any other exception...
             if ( Util.isDebugMode() ) PreferencesCommand.logger.error("DEBUG: Preferences: Exception: " + ex.getMessage(), ex);
-            PreferencesCommand.respondException(response, ex);
-            return;
+            throw ex;
         }
         if ( Util.isVerbose(3) ) PreferencesCommand.logger.info("...got preferences.");
-        PreferencesCommand.respondJSON( response, new CodeResponse(strPreferences) );
+        PreferencesCommand.respondJSON(response, 200, new CodeResponse(strPreferences) );
     }
 }

@@ -28,8 +28,8 @@ import java.util.List;
 
 import org.openrefine.rdf.model.expr.functions.ToIRIString;
 
-import com.google.refine.expr.ExpressionUtils;
-import com.google.refine.expr.ParsingException;
+import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.expr.ParsingException;
 
 import org.apache.jena.rdf.model.AnonId;
 import org.apache.jena.rdf.model.impl.ResourceImpl;
@@ -101,7 +101,7 @@ public class CellBlankNode extends ResourceNode implements CellNode {
             //      or "false" (a null or empty string is evaluated).
             //      When "true", a BNode is automatically generated.
             results =
-                Util.evaluateExpression( this.theProject, this.strExpression, this.strColumnName, this.theRec.row() );
+                Util.evaluateExpression( this.theGrid, this.strExpression, this.strColumnName, this.theRec.row(), this.projectId );
         }
         catch (ParsingException ex) {
             // An cell might result in a ParsingException when evaluating an IRI expression.
@@ -159,7 +159,7 @@ public class CellBlankNode extends ResourceNode implements CellNode {
                 else {
                     // Since we are processing by row (even in record mode for columns),
                     // the row number is set and we can use it with the ColumnName
-                    String strIndex = Integer.toString( this.theRec.row() );
+                    String strIndex = Long.toString( this.theRec.row() );
                     bnode = new ResourceImpl( new AnonId( strIRIColumnName + "_" + strIndex ) );
                 }
             }

@@ -23,9 +23,9 @@ package org.openrefine.rdf.model.expr.functions;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
-import com.google.refine.expr.EvalError;
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.grel.Function;
+import org.openrefine.expr.EvalError;
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.Function;
 
 import org.openrefine.rdf.model.Util;
 

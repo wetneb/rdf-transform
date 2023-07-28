@@ -24,7 +24,7 @@
 
 var logger = Packages.org.slf4j.LoggerFactory.getLogger("RDFT:Controller");
 
-//var RefineBase = Packages.com.google.refine;
+//var RefineBase = Packages.org.openrefine;
 var RDFTCmd = Packages.org.openrefine.rdf.command;
 
 /*

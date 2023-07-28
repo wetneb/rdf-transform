@@ -21,8 +21,9 @@
 
 package org.openrefine.rdf.model.utils;
 
-import com.google.refine.model.Cell;
-import com.google.refine.model.Record;
+import org.openrefine.model.Cell;
+import org.openrefine.model.IndexedRow;
+import org.openrefine.model.Record;
 import org.openrefine.rdf.model.Node;
 import org.openrefine.rdf.model.ResourceNode;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -35,7 +36,7 @@ public class RecordModel {
 
     // For Row-based data processing...
     @JsonIgnore
-    private int iRowIndex = -1;
+    private long iRowIndex = -1;
 
     // For Record-based data processing...
     @JsonIgnore
@@ -51,10 +52,10 @@ public class RecordModel {
     private boolean bSubRecords = false;
 
     @JsonIgnore
-    private int iSubRecordRowStart = -1;
+    private long iSubRecordRowStart = -1;
 
     @JsonIgnore
-    private int iSubRecordRowEnd = -1;
+    private long iSubRecordRowEnd = -1;
 
     public RecordModel(Node theNode) {
         // Get the back reference to the node holding this object...
@@ -66,7 +67,7 @@ public class RecordModel {
     }
 
     @JsonIgnore
-    public void setRootRow(int iRowIndex) {
+    public void setRootRow(long iRowIndex) {
         this.iRowIndex = iRowIndex;
     }
 
@@ -96,7 +97,7 @@ public class RecordModel {
     }
 
     @JsonIgnore
-    private int getRowIndex() {
+    private long getRowIndex() {
         return this.iRowIndex;
     }
 
@@ -128,7 +129,7 @@ public class RecordModel {
         return (this.iRowIndex >= 0);
     }
 
-    public int row() {
+    public long row() {
         return this.iRowIndex;
     }
 
@@ -136,12 +137,12 @@ public class RecordModel {
         if ( this.isRecordMode() ) {
             // Set first row...
             if (this.iRowIndex < 0) {
-                this.iRowIndex = this.theRecord.fromRowIndex;
+                this.iRowIndex = this.theRecord.getStartRowId();
                 return true;
             }
             // Set next row...
             this.iRowIndex++;
-            if (this.iRowIndex < this.theRecord.toRowIndex) {
+            if (this.iRowIndex < this.theRecord.getEndRowId()) {
                 return true;
             }
             // No more rows...
@@ -171,13 +172,13 @@ public class RecordModel {
     public void setSubRecord(String strColumnName) {
         if ( this.isSet() ) {
             bSubRecords = false;
-            int iColumn = this.theNode.getProject().columnModel.getColumnByName(strColumnName).getCellIndex();
+            int iColumn = this.theNode.getGrid().getColumnModel().getColumnIndexByName(strColumnName);
 
-            int iStart = this.theRecord.fromRowIndex;
+            long iStart = this.theRecord.getStartRowId();
             if (iSubRecordRowEnd >= 0) {
                 iStart = iSubRecordRowEnd;
             }
-            int iEnd = this.theRecord.toRowIndex;
+            long iEnd = this.theRecord.getEndRowId();
             if (iStart == iEnd) {
                 iSubRecordRowStart = -1;
                 iSubRecordRowEnd = -1;
@@ -186,8 +187,9 @@ public class RecordModel {
             }
 
             iSubRecordRowStart = iStart;
-            for (int iRow = iStart; iRow < iEnd; iRow++) {
-                Cell cell = this.theNode.getProject().rows.get(iRow).getCell( iColumn );
+            for (IndexedRow indexedRow : theNode.getGrid().getRowsAfter(iStart, (int)(iEnd-iStart))) {
+                long iRow = indexedRow.getIndex();
+                Cell cell = indexedRow.getRow().getCell( iColumn );
                 if ( ! ( cell == null || cell.value.toString().isEmpty() ) ) {
                     iSubRecordRowEnd = iRow + 1;
                     bSubRecords = true;

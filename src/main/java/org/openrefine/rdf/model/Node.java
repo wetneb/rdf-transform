@@ -24,7 +24,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-import com.google.refine.model.Project;
+import org.openrefine.model.Grid;
+import org.openrefine.model.Project;
 
 import org.openrefine.rdf.RDFTransform;
 import org.openrefine.rdf.model.utils.RecordModel;
@@ -352,7 +353,10 @@ abstract public class Node {
     protected Model theModel = null;
 
     @JsonIgnore
-    protected Project theProject = null;
+    protected Grid theGrid = null;
+    
+    @JsonIgnore
+    protected long projectId = 0L;
 
     @JsonIgnore
     public RecordModel theRec = null;
@@ -381,8 +385,8 @@ abstract public class Node {
     abstract public String getNodeType();
 
     @JsonIgnore
-    public Project getProject() {
-        return theProject;
+    public Grid getGrid() {
+        return theGrid;
     }
 
     @JsonProperty("isIndex")
@@ -425,7 +429,8 @@ abstract public class Node {
     protected void setObjectParameters(ResourceNode nodeProperty) {
         this.baseIRI = nodeProperty.baseIRI;
         this.theModel = nodeProperty.theModel;
-        this.theProject = nodeProperty.theProject;
+        this.theGrid = nodeProperty.theGrid;
+        this.projectId = nodeProperty.projectId;
     }
 
     /*

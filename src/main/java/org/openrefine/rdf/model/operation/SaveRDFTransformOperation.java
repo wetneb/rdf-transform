@@ -21,21 +21,28 @@
 
 package org.openrefine.rdf.model.operation;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.openrefine.history.GridPreservation;
+import org.openrefine.model.Grid;
+import org.openrefine.model.Project;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.ChangeResult;
+import org.openrefine.operations.Operation;
+import org.openrefine.operations.exceptions.OperationException;
+import org.openrefine.overlay.OverlayModel;
 import org.openrefine.rdf.RDFTransform;
 import org.openrefine.rdf.model.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 //import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 
-import com.google.refine.history.HistoryEntry;
-import com.google.refine.model.AbstractOperation;
-import com.google.refine.model.Project;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class SaveRDFTransformOperation extends AbstractOperation {
+public class SaveRDFTransformOperation implements Operation {
     private final static Logger logger = LoggerFactory.getLogger("RDFT:SaveRDFTransOp");
 
     /*
@@ -62,8 +69,7 @@ public class SaveRDFTransformOperation extends AbstractOperation {
     }
 
     @Override
-    @JsonIgnore
-    public String getJsonDescription() {
+    public String getDescription() {
         return SaveRDFTransformOperation.strSaveRDFTransform;
     }
 
@@ -85,27 +91,13 @@ public class SaveRDFTransformOperation extends AbstractOperation {
     }
 
     @Override
-    protected String getBriefDescription(Project theProject) {
-        return SaveRDFTransformOperation.strSaveRDFTransform;
+    public ChangeResult apply(Grid projectState, ChangeContext context) throws OperationException {
+        Map<String, OverlayModel> newOverlayModels = new HashMap<>(projectState.getOverlayModels());
+        Grid newGrid = projectState.withOverlayModels(newOverlayModels);
+        return new ChangeResult(newGrid, GridPreservation.PRESERVES_RECORDS, null);
     }
 
-    @Override
-    protected HistoryEntry createHistoryEntry(Project theProject, long liHistoryEntryID)
-            throws Exception {
-        if ( Util.isDebugMode() ) SaveRDFTransformOperation.logger.info("DEBUG: Creating Save Op's change history entry...");
-        // Create a new Change object with the transform sent by the command...
-        //   NOTE: The previous transform will be set later when the HistoryEntry
-        //         causes the Change to apply()'s this transform as the current transform.
-        RDFTransformChange changeHistory = new RDFTransformChange(this.theTransform, null);
-
-        // Create a new HistoryEntry to cause the Change to apply()...
-        // NOTE: This will also cause the Change to save() after the apply()
-        return new HistoryEntry(liHistoryEntryID, theProject,
-                                SaveRDFTransformOperation.strSaveRDFTransform,
-                                this, changeHistory);
-    }
-
-    static public AbstractOperation reconstruct(Project theProject, JsonNode jnodeElement)
+    static public Operation reconstruct(Project theProject, JsonNode jnodeElement)
             throws Exception {
         if ( Util.isVerbose(3) || Util.isDebugMode() ) SaveRDFTransformOperation.logger.info("Reconstructing from Save Operation...");
         JsonNode jnodeTransform = jnodeElement.get(RDFTransform.KEY);
@@ -116,4 +108,5 @@ public class SaveRDFTransformOperation extends AbstractOperation {
         RDFTransform theTransform = RDFTransform.reconstruct(theProject, jnodeTransform);
         return new SaveRDFTransformOperation(theTransform);
     }
+
 }

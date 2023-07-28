@@ -28,23 +28,22 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.openrefine.rdf.model.Util;
-
-import com.google.refine.commands.expr.PreviewExpressionCommand;
-import com.google.refine.expr.EvalError;
-import com.google.refine.expr.ExpressionUtils;
-import com.google.refine.expr.ParsingException;
-import com.google.refine.model.Project;
-import com.google.refine.util.ParsingUtilities;
-
 import org.apache.jena.iri.IRI;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-
+import org.openrefine.commands.expr.PreviewExpressionCommand;
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.expr.ParsingException;
+import org.openrefine.model.Grid;
+import org.openrefine.model.Project;
+import org.openrefine.model.Record;
+import org.openrefine.rdf.model.Util;
+import org.openrefine.util.ParsingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class PreviewRDFTExpressionCommand extends PreviewExpressionCommand {
     private final static Logger logger = LoggerFactory.getLogger("RDFT:PrevRDFTExpCmd");
@@ -63,81 +62,76 @@ public class PreviewRDFTExpressionCommand extends PreviewExpressionCommand {
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        try {
-            //
-            // Set up response...
-            //   ...cause we're hand-jamming JSON responses directly...
-            //
-            response.setCharacterEncoding("UTF-8");
-            response.setHeader("Content-Type", "application/json");
+        //
+        // Set up response...
+        //   ...cause we're hand-jamming JSON responses directly...
+        //
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-Type", "application/json");
 
-            //
-            // Process parameters...
-            //
-            this.theProject = this.getProject(request);
+        //
+        // Process parameters...
+        //
+        this.theProject = this.getProject(request);
 
-            this.strExpression = request.getParameter("expression");
+        this.strExpression = request.getParameter("expression");
 
-            String strRowIndices = request.getParameter("rowIndices");
-            if (strRowIndices == null) {
-                CodeResponse crErr = new CodeResponse("No row / record indices specified", true);
-                PreviewRDFTExpressionCommand.respondJSON(response, crErr);
-                return;
-            }
-            this.theRowIndices = ParsingUtilities.evaluateJsonStringToArrayNode(strRowIndices);
-
-            String strIsIRI = request.getParameter("isIRI");
-            boolean bIsIRI = ( strIsIRI != null && strIsIRI.equals("1") ) ? true : false;
-
-            String strPrefix = request.getParameter("prefix");
-            if ( strPrefix != null ) {
-                this.strPrefix = strPrefix;
-            }
-
-            this.strColumnName = request.getParameter("columnName");
-
-            String strBaseIRI = request.getParameter("baseIRI");
-            this.baseIRI = Util.buildIRI(strBaseIRI);
-            if (this.baseIRI == null) {
-                CodeResponse crErr = new CodeResponse("Invalid Base IRI", true);
-                PreviewRDFTExpressionCommand.respondJSON(response, crErr);
-                return;
-            }
-            // ...end Parameters
-
-            //
-            // Set up the output
-            //
-            ObjectMapper mapper = new ObjectMapper();
-            this.theWriter = mapper.getFactory().createGenerator(response.getWriter());
-
-            //
-            // Process the command...
-            //
-            boolean bGood = false;
-            if (bIsIRI) {
-                bGood = this.respondIRIPreview();
-            }
-            else {
-                bGood = this.respondLiteralPreview();
-            }
-
-            String strCode = "error";
-            if (bGood) {
-                strCode = "ok";
-            }
-            this.theWriter.writeStringField("code", strCode);
-            this.theWriter.writeEndObject();
-
-            //
-            // Clean up...
-            //
-            this.theWriter.flush();
-            this.theWriter.close();
+        String strRowIndices = request.getParameter("rowIndices");
+        if (strRowIndices == null) {
+            CodeResponse crErr = new CodeResponse("No row / record indices specified", true);
+            PreviewRDFTExpressionCommand.respondJSON(response, crErr);
+            return;
         }
-        catch (Exception ex) {
-            PreviewRDFTExpressionCommand.respondException(response, ex);
+        this.theRowIndices = ParsingUtilities.evaluateJsonStringToArrayNode(strRowIndices);
+
+        String strIsIRI = request.getParameter("isIRI");
+        boolean bIsIRI = ( strIsIRI != null && strIsIRI.equals("1") ) ? true : false;
+
+        String strPrefix = request.getParameter("prefix");
+        if ( strPrefix != null ) {
+            this.strPrefix = strPrefix;
         }
+
+        this.strColumnName = request.getParameter("columnName");
+
+        String strBaseIRI = request.getParameter("baseIRI");
+        this.baseIRI = Util.buildIRI(strBaseIRI);
+        if (this.baseIRI == null) {
+            CodeResponse crErr = new CodeResponse("Invalid Base IRI", true);
+            PreviewRDFTExpressionCommand.respondJSON(response, crErr);
+            return;
+        }
+        // ...end Parameters
+
+        //
+        // Set up the output
+        //
+        ObjectMapper mapper = new ObjectMapper();
+        this.theWriter = mapper.getFactory().createGenerator(response.getWriter());
+
+        //
+        // Process the command...
+        //
+        boolean bGood = false;
+        if (bIsIRI) {
+            bGood = this.respondIRIPreview();
+        }
+        else {
+            bGood = this.respondLiteralPreview();
+        }
+
+        String strCode = "error";
+        if (bGood) {
+            strCode = "ok";
+        }
+        this.theWriter.writeStringField("code", strCode);
+        this.theWriter.writeEndObject();
+
+        //
+        // Clean up...
+        //
+        this.theWriter.flush();
+        this.theWriter.close();
     }
 
     private boolean respondIRIPreview() throws IOException {
@@ -146,10 +140,11 @@ public class PreviewRDFTExpressionCommand extends PreviewExpressionCommand {
         this.theWriter.writeStartObject();
 
         String[] astrAbsolutes = new String[iRows];
-        Integer[] aiIndices = new Integer[iRows];
+        Long[] aiIndices = new Long[iRows];
         Boolean bGood = true;
         int iRow = 0;
-        boolean bRecordMode = this.theProject.recordModel.hasRecords();
+        Grid grid = theProject.getCurrentGrid();
+        boolean bRecordMode = grid.getColumnModel().hasRecords();
         StringBuffer strbuffTemp = new StringBuffer();
         StringBuffer strbuffTempAbs = new StringBuffer();
         String strResult;
@@ -166,18 +161,20 @@ public class PreviewRDFTExpressionCommand extends PreviewExpressionCommand {
                 astrAbsolutes[iRow] = null;
                 strbuffTemp.setLength(0);
 
-                int iRowIndex = this.theRowIndices.get(iRow).asInt();
-                if (iRowIndex >= 0 && iRowIndex < this.theProject.rows.size()) {
+                long iRowIndex = this.theRowIndices.get(iRow).asLong();
+                if (iRowIndex >= 0 && iRowIndex < grid.rowCount()) {
 
                     // Store Index for Row / Record...
                     aiIndices[iRow] = iRowIndex;
-                    if (bRecordMode)
-                        aiIndices[iRow] = this.theProject.recordModel.getRecordOfRow(iRowIndex).recordIndex;
+                    if (bRecordMode) {
+                        Record record = grid.getRecordsBefore(iRowIndex + 1, 1).get(0);
+                        aiIndices[iRow] = record.getStartRowId();
+                    }
 
                     // NOTE: Expression evaluation will fail all the time because...typing!
                     //       It's constantly updating the preview as we type, so failure on
                     //       incomplete expressions!
-                    results = Util.evaluateExpression(this.theProject, this.strExpression, this.strColumnName, iRowIndex);
+                    results = Util.evaluateExpression(this.theProject.getCurrentGrid(), this.strExpression, this.strColumnName, iRowIndex, this.theProject.getId());
                 }
                 else
                     break;
@@ -316,9 +313,10 @@ public class PreviewRDFTExpressionCommand extends PreviewExpressionCommand {
 
         this.theWriter.writeStartObject();
 
-        Integer[] aiIndices = new Integer[iRows];
+        Long[] aiIndices = new Long[iRows];
+        Grid grid = theProject.getCurrentGrid();
         int iRow = 0;
-        boolean bRecordMode = this.theProject.recordModel.hasRecords();
+        boolean bRecordMode = grid.getColumnModel().hasRecords(); // TODO replace by engine configuration
         StringBuffer strbuffTemp = new StringBuffer();
         String strResult;
         boolean bGood = true;
@@ -332,18 +330,20 @@ public class PreviewRDFTExpressionCommand extends PreviewExpressionCommand {
                 Object results = null;
                 strbuffTemp.setLength(0);
 
-                int iRowIndex = this.theRowIndices.get(iRow).asInt();
-                if (iRowIndex >= 0 && iRowIndex < this.theProject.rows.size()) {
+                long iRowIndex = this.theRowIndices.get(iRow).asLong();
+                if (iRowIndex >= 0 && iRowIndex < grid.rowCount()) {
 
                     // Store Index for Row / Record...
                     aiIndices[iRow] = iRowIndex;
-                    if (bRecordMode)
-                        aiIndices[iRow] = this.theProject.recordModel.getRecordOfRow(iRowIndex).recordIndex;
+                    if (bRecordMode) {
+                        Record record = grid.getRecordsBefore(iRowIndex + 1, 1).get(0);
+                        aiIndices[iRow] = record.getStartRowId();
+                    }
 
                     // NOTE: Expression evaluation will fail all the time because...typing!
                     //       It's constantly updating the preview as we type, so failure on
                     //       incomplete expressions!
-                    results = Util.evaluateExpression(this.theProject, this.strExpression, this.strColumnName, iRowIndex);
+                    results = Util.evaluateExpression(this.theProject.getCurrentGrid(), this.strExpression, this.strColumnName, iRowIndex, theProject.getId());
                 }
                 else
                     break;

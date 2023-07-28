@@ -20,15 +20,16 @@
 
 package org.openrefine.rdf.model;
 
-import com.google.refine.expr.Evaluable;
-import com.google.refine.expr.ExpressionUtils;
-import com.google.refine.expr.MetaParser;
-import com.google.refine.expr.ParsingException;
-import com.google.refine.model.Cell;
-import com.google.refine.model.Project;
-import com.google.refine.model.Row;
-import com.google.refine.preference.PreferenceStore;
-import com.google.refine.ProjectManager;
+import org.openrefine.expr.Evaluable;
+import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.expr.MetaParser;
+import org.openrefine.expr.ParsingException;
+import org.openrefine.model.Cell;
+import org.openrefine.model.Grid;
+import org.openrefine.model.Project;
+import org.openrefine.model.Row;
+import org.openrefine.preference.PreferenceStore;
+import org.openrefine.ProjectManager;
 
 import org.apache.jena.iri.IRI;
 import org.apache.jena.iri.IRIFactory;
@@ -426,7 +427,7 @@ public class Util {
         return iriNew;
     }
 
-    static public Object evaluateExpression(Project theProject, String strExpression, String strColumnName, int iRowIndex)
+    static public Object evaluateExpression(Grid theGrid, String strExpression, String strColumnName, long iRowIndex, long projectId)
             throws ParsingException {
         //
         // Evaluate the expression on the cell and return results...
@@ -443,13 +444,13 @@ public class Util {
         if ( strExpression == null ) {
             return null;
         }
-
+        
         // Select the column reference (er, cell index) by given name...
         int theColumn = -1;
         // If a regular column (not a row/record index column)...
         if ( ! ( strColumnName == null || strColumnName.isEmpty() ) ) {
             try {
-                theColumn = theProject.columnModel.getColumnByName(strColumnName).getCellIndex();
+                theColumn = theGrid.getColumnModel().getColumnIndexByName(strColumnName);
             }
             catch (ClassCastException | NullPointerException ex) {
                 // Let it be -1...continue...
@@ -459,7 +460,7 @@ public class Util {
         // Select the row by given row index...
         Row theRow = null;
         try {
-            theRow = theProject.rows.get(iRowIndex);
+            theRow = theGrid.getRow(iRowIndex);
         }
         catch (IndexOutOfBoundsException ex) {
             // Let it be null...continue...
@@ -476,10 +477,10 @@ public class Util {
         }
 
         // Create a bindings property for this expression...
-        Properties bindings = ExpressionUtils.createBindings(theProject);
+        Properties bindings = ExpressionUtils.createBindings();
 
         // Bind the cell for expression evaluation...
-        ExpressionUtils.bind(bindings, theRow, iRowIndex, strColumnName, theCell);
+        ExpressionUtils.bind(bindings, theGrid.getColumnModel(), theRow, iRowIndex, null, strColumnName, theCell, theGrid.getOverlayModels(), projectId);
 
         // Create an evaluator for this expression...
         Evaluable eval = MetaParser.parse(strExpression);

@@ -26,7 +26,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.refine.commands.Command;
+import org.openrefine.commands.Command;
 
 import org.openrefine.rdf.model.Util;
 
@@ -50,16 +50,16 @@ public class ValidateIRICommand extends Command {
             IRI theIRI = Util.buildIRI(strIRI, true);
             if (theIRI == null) {
                 if ( Util.isDebugMode() ) ValidateIRICommand.logger.error("DEBUG: Validating IRI: Failure [" + strIRI + "]");
-                ValidateIRICommand.respondJSON(response, CodeResponse.error);
+                // we still return code 200 because it is expected that the client submits invalid IRIs 
+                ValidateIRICommand.respondJSON(response, 200, CodeResponse.error);
                 return;
             }
         }
         catch (Exception ex) { // ...any other exception...
             if ( Util.isDebugMode() ) ValidateIRICommand.logger.error("DEBUG: Validating IRI: Exception: " + ex.getMessage(), ex);
-            ValidateIRICommand.respondException(response, ex);
-            return;
+            throw ex;
         }
         if ( Util.isVerbose(3) ) ValidateIRICommand.logger.info("...IRI validated.");
-        ValidateIRICommand.respondJSON(response, CodeResponse.ok);
+        ValidateIRICommand.respondJSON(response, 200, CodeResponse.ok);
     }
 }

@@ -36,7 +36,7 @@ import java.util.Map.Entry;
 import org.openrefine.rdf.ApplicationContext;
 import org.openrefine.rdf.model.Util;
 
-import com.google.refine.util.ParsingUtilities;
+import org.openrefine.util.ParsingUtilities;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonGenerationException;

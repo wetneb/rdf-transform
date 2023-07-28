@@ -21,30 +21,37 @@
 package org.openrefine.rdf.model.operation;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
-import com.google.refine.model.Project;
-
-import org.openrefine.rdf.RDFTransform;
-import org.openrefine.rdf.model.Util;
-import org.openrefine.rdf.model.vocab.Vocabulary;
-import com.google.refine.browsing.Engine;
-
 import org.apache.jena.graph.Triple;
+import org.apache.jena.iri.IRI;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.util.iterator.ExtendedIterator;
-
+import org.openrefine.browsing.Engine;
+import org.openrefine.model.Grid;
+import org.openrefine.model.IndexedRow;
+import org.openrefine.model.Project;
+import org.openrefine.model.Record;
+import org.openrefine.model.Row;
+import org.openrefine.rdf.RDFTransform;
+import org.openrefine.rdf.model.ResourceNode;
+import org.openrefine.rdf.model.Util;
+import org.openrefine.rdf.model.vocab.Vocabulary;
+import org.openrefine.sorting.SortingConfig;
+import org.openrefine.util.CloseableIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class RDFVisitor {
+public class RDFVisitor {
     private final static Logger logger = LoggerFactory.getLogger("RDFT:RDFVisitor");
 
     private final RDFTransform theTransform;
     private final StreamRDF theWriter;
     protected final Model theModel;
+    protected long projectId;
     protected boolean bLimitWarning = true;
 
     public RDFVisitor(RDFTransform theTransform, StreamRDF theWriter) {
@@ -107,14 +114,40 @@ public abstract class RDFVisitor {
         return (this.theWriter == null);
     }
 
-    abstract public void buildModel(Project theProject, Engine theEngine);
+    public void buildModel(Grid grid, Engine theEngine, long projectId, int limit) {
+        if ( Util.isVerbose(3) ) logger.info("buildModel: visit matching filtered rows");
+        this.projectId = projectId;
+        start();
+        if (grid.getColumnModel().hasRecords()) {
+            try (CloseableIterator<Record> iterator = theEngine.getMatchingRecords(SortingConfig.NO_SORTING)) {
+                CloseableIterator<Record> limitedIterator;
+                if (limit != 0) {
+                    limitedIterator = iterator.take(limit);
+                } else {
+                    limitedIterator = iterator;
+                }
+                limitedIterator.forEach(record -> visit(grid, record));
+            }
+        } else {
+            try (CloseableIterator<IndexedRow> iterator = theEngine.getMatchingRows(SortingConfig.NO_SORTING)) {
+                CloseableIterator<IndexedRow> limitedIterator;
+                if (limit != 0) {
+                    limitedIterator = iterator.take(limit);
+                } else {
+                    limitedIterator = iterator;
+                }
+                limitedIterator.forEach(indexedRow -> visit(grid, indexedRow.getIndex(), indexedRow.getRow()));
+            }
+        }
+        end();
+    }
 
     /**
      * Performs any necessary processing before visiting the selected (filtered) data rows or records.
      * Called by the FilteredRows or FilteredRecords accept() method in this.buildModel(Project, Engine)
      * @param theProject
      */
-    public void start(Project theProject) {
+    public void start() {
         if ( Util.isVerbose(3) ) RDFVisitor.logger.info("Starting Visitation...");
 
         // If we do NOT have a writer, let the calling processor control all model activity...
@@ -144,7 +177,7 @@ public abstract class RDFVisitor {
      * Called by the FilteredRows or FilteredRecords accept() method in this.buildModel(Project, Engine)
      * @param theProject
      */
-    public void end(Project theProject) {
+    public void end() {
         if ( Util.isVerbose(3) ) RDFVisitor.logger.info("...Ending Visitation");
 
         // If we do NOT have a writer, let the calling processor control all model activity...
@@ -161,6 +194,94 @@ public abstract class RDFVisitor {
             if ( Util.isVerbose() || Util.isDebugMode() ) ex.printStackTrace();
             throw new RuntimeException(ex.getMessage(), ex);
         }
+    }
+    
+    public boolean visit(Grid grid, Record theRecord) {
+        try {
+            if ( Util.isDebugMode() ) logger.info("DEBUG: Visiting Record: " + theRecord.getStartRowId());
+            IRI baseIRI = this.getRDFTransform().getBaseIRI();
+            List<ResourceNode> listRoots = this.getRDFTransform().getRoots();
+            for ( ResourceNode root : listRoots ) {
+                this.theModel.enterCriticalSection(Model.WRITE);
+                root.createStatements(baseIRI, theModel, grid, theRecord, projectId);
+                this.theModel.leaveCriticalSection();
+
+                if ( Util.isDebugMode() ) {
+                    logger.info("DEBUG:   " +
+                        "Root: " + root.getNodeName() + "(" + root.getNodeType() + ")  " +
+                        "Model Size: " + theModel.size()
+                    );
+                }
+                //
+                // Flush Statements
+                //
+                // Write and clear a discrete set of statements from the repository connection
+                // as the transformed statements use in-memory resources until flushed to disk.
+                // Otherwise, large files would use excessive memory!
+                //
+                if ( theModel.size() > Util.getExportLimit() ) {
+                    this.flushStatements();
+                    if ( this.isNoWriter() && bLimitWarning) {
+                        this.bLimitWarning = false;
+                        logger.warn("WARNING:   Limit Reached: Memory may soon become exhausted!");
+                    }
+                }
+            }
+
+            // Flush any remaining statements...
+            this.flushStatements();
+        }
+        catch (Exception ex) {
+            logger.error("ERROR: Visit Issue: " + ex.getMessage(), ex);
+            if ( Util.isVerbose() || Util.isDebugMode() ) ex.printStackTrace();
+            return true; // ...stop visitation process
+        }
+
+        return false;
+    }
+    
+    public boolean visit(Grid grid, long iRowIndex, Row theRow) {
+        try {
+            if ( Util.isDebugMode() ) logger.info("DEBUG: Visiting Row: " + iRowIndex);
+            IRI baseIRI = this.getRDFTransform().getBaseIRI();
+            List<ResourceNode> listRoots = this.getRDFTransform().getRoots();
+            for ( ResourceNode root : listRoots ) {
+                this.theModel.enterCriticalSection(Model.WRITE);
+                root.createStatements(baseIRI, theModel, grid, iRowIndex, projectId);
+                this.theModel.leaveCriticalSection();
+
+                if ( Util.isDebugMode() ) {
+                    logger.info("DEBUG:   " +
+                        "Root: " + root.getNodeName() + "(" + root.getNodeType() + ")  " +
+                        "Model Size: " + theModel.size()
+                    );
+                }
+                //
+                // Flush Statements
+                //
+                // Write and clear a discrete set of statements from the repository connection
+                // as the transformed statements use in-memory resources until flushed to disk.
+                // Otherwise, large files would use excessive memory!
+                //
+                if ( theModel.size() > Util.getExportLimit() ) {
+                    this.flushStatements();
+                    if ( this.isNoWriter() && bLimitWarning) {
+                        this.bLimitWarning = false;
+                        logger.warn("WARNING:   Limit Reached: Memory may soon become exhausted!");
+                    }
+                }
+            }
+
+            // Flush any remaining statements...
+            this.flushStatements();
+        }
+        catch (Exception ex) {
+            logger.error("ERROR: Visit Issue: " + ex.getMessage(), ex);
+            if ( Util.isVerbose() || Util.isDebugMode() ) ex.printStackTrace();
+            return true; // ...stop visitation process
+        }
+
+        return false;
     }
 
     protected void flushStatements() {

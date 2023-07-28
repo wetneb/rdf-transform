@@ -27,7 +27,7 @@ import org.openrefine.rdf.RDFTransform;
 import org.openrefine.rdf.model.Util;
 import org.openrefine.rdf.model.vocab.Vocabulary;
 import org.openrefine.rdf.model.vocab.VocabularyList;
-import com.google.refine.util.ParsingUtilities;
+import org.openrefine.util.ParsingUtilities;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;

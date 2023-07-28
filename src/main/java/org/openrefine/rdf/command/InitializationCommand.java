@@ -29,16 +29,16 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.refine.ClientSideResourceManager;
-import com.google.refine.RefineServlet;
-import com.google.refine.commands.Command;
-import com.google.refine.exporters.Exporter;
-import com.google.refine.exporters.ExporterRegistry;
-import com.google.refine.expr.ExpressionUtils;
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.model.Project;
-import com.google.refine.operations.OperationRegistry;
-
+import org.openrefine.ClientSideResourceManager;
+import org.openrefine.RefineServlet;
+import org.openrefine.commands.Command;
+import org.openrefine.exporters.Exporter;
+import org.openrefine.exporters.ExporterRegistry;
+import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.model.Project;
+import org.openrefine.operations.OperationRegistry;
+import org.openrefine.overlay.OverlayModelResolver;
 import org.openrefine.rdf.ApplicationContext;
 import org.openrefine.rdf.RDFTransform;
 import org.openrefine.rdf.model.exporter.RDFPrettyExporter;
@@ -47,7 +47,6 @@ import org.openrefine.rdf.model.expr.RDFTransformBinder;
 import org.openrefine.rdf.model.expr.functions.ToIRIString;
 import org.openrefine.rdf.model.expr.functions.ToStrippedLiteral;
 import org.openrefine.rdf.model.Util;
-import org.openrefine.rdf.model.operation.RDFTransformChange;
 import org.openrefine.rdf.model.operation.SaveRDFTransformOperation;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.sys.JenaSystem;
@@ -186,21 +185,10 @@ public class InitializationCommand extends Command {
         };
 
         /*
-         *  Server-side Custom Change Class...
-         */
-        RefineServlet.registerClassMapping(
-            // Non-existent name--we are adding, not renaming, so this can be a dummy...
-            "org.openrefine.model.changes.DataExtensionChange",
-            // Added Change Class name...
-            "org.openrefine.rdf.model.operation.RDFTransformChange"
-        );
-        RefineServlet.cacheClass(RDFTransformChange.class);
-
-        /*
          *  Server-side Operations...
          */
         OperationRegistry.registerOperation(
-            this.theModule, strSaveRDFTransform, SaveRDFTransformOperation.class
+            this.theModule.getName(), strSaveRDFTransform, SaveRDFTransformOperation.class
         );
 
         /*
@@ -283,7 +271,7 @@ public class InitializationCommand extends Command {
         /*
          *  Server-side Overlay Models - Attach an RDFTransform object to the project...
          */
-        Project.registerOverlayModel("RDFTransform", RDFTransform.class);
+        OverlayModelResolver.registerOverlayModel("RDFTransform", RDFTransform.class);
 
         // Test Exporter Registry...
         Exporter exporter = ExporterRegistry.getExporter("RDF_PROTO");

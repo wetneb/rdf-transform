@@ -21,21 +21,10 @@
 
 package org.openrefine.rdf.model;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.io.IOException;
-
-import com.google.refine.model.Project;
-import com.google.refine.model.Record;
-
-import org.openrefine.rdf.model.Util.IRIParsingException;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreType;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonGenerationException;
 
 import org.apache.jena.iri.IRI;
 import org.apache.jena.rdf.model.Model;
@@ -44,9 +33,17 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.impl.PropertyImpl;
 import org.apache.jena.rdf.model.impl.ResourceImpl;
 import org.apache.jena.vocabulary.RDF;
-
+import org.openrefine.model.Grid;
+import org.openrefine.model.Record;
+import org.openrefine.rdf.model.Util.IRIParsingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreType;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonGenerator;
 
 abstract public class ResourceNode extends Node {
     static private final Logger logger = LoggerFactory.getLogger("RDFT:ResNode");
@@ -188,12 +185,13 @@ abstract public class ResourceNode extends Node {
     /*
      *  Method createStatements() for Root Resource Node types on OpenRefine Rows
      */
-    public void createStatements(IRI baseIRI, Model theModel, Project theProject, int iRowIndex)
+    public void createStatements(IRI baseIRI, Model theModel, Grid theGrid, long iRowIndex, long projectId)
             throws RuntimeException
     {
         this.baseIRI = baseIRI;
         this.theModel = theModel;
-        this.theProject = theProject;
+        this.theGrid = theGrid;
+        this.projectId = projectId;
 
         this.theRec.setRootRow(iRowIndex);
         this.createStatementsWorker();
@@ -203,12 +201,13 @@ abstract public class ResourceNode extends Node {
     /*
      *  Method createStatements() for Root Resource Node types on OpenRefine Records
      */
-    public void createStatements(IRI baseIRI, Model theModel, Project theProject, Record theRecord)
+    public void createStatements(IRI baseIRI, Model theModel, Grid theGrid, Record theRecord, long projectId)
             throws RuntimeException
     {
         this.baseIRI = baseIRI;
         this.theModel = theModel;
-        this.theProject = theProject;
+        this.theGrid = theGrid;
+        this.projectId = projectId;
 
         this.theRec.setRootRecord(theRecord);
         this.createStatementsWorker();

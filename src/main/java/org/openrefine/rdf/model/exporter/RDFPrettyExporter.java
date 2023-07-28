@@ -23,23 +23,17 @@ package org.openrefine.rdf.model.exporter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Writer;
-import java.nio.charset.Charset;
 import java.util.Properties;
 
-import org.openrefine.rdf.RDFTransform;
-import org.openrefine.rdf.model.Util;
-import org.openrefine.rdf.model.operation.ExportRDFRecordVisitor;
-import org.openrefine.rdf.model.operation.ExportRDFRowVisitor;
-import org.openrefine.rdf.model.operation.RDFVisitor;
-
-import com.google.refine.browsing.Engine;
-import com.google.refine.exporters.WriterExporter;
-import com.google.refine.model.Project;
-
-import org.apache.commons.io.output.WriterOutputStream;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
-
+import org.openrefine.ProjectMetadata;
+import org.openrefine.browsing.Engine;
+import org.openrefine.exporters.WriterExporter;
+import org.openrefine.model.Grid;
+import org.openrefine.rdf.RDFTransform;
+import org.openrefine.rdf.model.Util;
+import org.openrefine.rdf.model.operation.RDFVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,41 +59,23 @@ public class RDFPrettyExporter extends RDFExporter implements WriterExporter {
         super(format, strName);
     }
 
-    public void export(Project theProject, Properties options, Engine theEngine,
-                        OutputStream outputStream)
-            throws IOException {
+    @Override
+    public void export(Grid grid, ProjectMetadata projectMetadata, long projectId, Properties options, Engine engine,
+            Writer writer) throws IOException {
         if ( Util.isDebugMode() ) RDFPrettyExporter.logger.info("DEBUG: Exporting " + this.strName + " via OutputStream");
-        this.outputStream = outputStream;
-        this.export(theProject, options, theEngine);
+        this.export(grid, projectId, options, engine);
     }
 
-    public void export(Project theProject, Properties options, Engine theEngine,
-                        Writer theWriter)
+    private void export(Grid grid, long projectId, Properties options, Engine theEngine)
              throws IOException
     {
-        if ( Util.isDebugMode() ) RDFPrettyExporter.logger.info("DEBUG: Exporting " + this.strName + " via Writer");
-        this.outputStream = new WriterOutputStream(theWriter, Charset.forName("UTF-8"));
-        this.export(theProject, options, theEngine);
-    }
-
-    private void export(Project theProject, Properties options, Engine theEngine)
-             throws IOException
-    {
-        RDFTransform theTransform = RDFTransform.getRDFTransform(theProject);
+        RDFTransform theTransform = RDFTransform.getRDFTransform(grid, projectId);
         try {
             if ( Util.isDebugMode() ) RDFPrettyExporter.logger.info("DEBUG:   Starting RDF Export...");
 
             // Process all records/rows of data for statements...
-            RDFVisitor theVisitor = null;
-            if ( theProject.recordModel.hasRecords() ) {
-                if ( Util.isDebugMode() ) RDFPrettyExporter.logger.info("DEBUG:     Process by Record Visitor...");
-                theVisitor = new ExportRDFRecordVisitor(theTransform, null);
-            }
-            else {
-                if ( Util.isDebugMode() ) RDFPrettyExporter.logger.info("DEBUG:     Process by Row Visitor...");
-                theVisitor = new ExportRDFRowVisitor(theTransform, null);
-            }
-            theVisitor.buildModel(theProject, theEngine);
+            RDFVisitor theVisitor = new RDFVisitor(theTransform, null);
+            theVisitor.buildModel(grid, theEngine, projectId, 0);
 
             RDFDataMgr.write(this.outputStream, theVisitor.getModel(), this.format) ;
             if ( Util.isDebugMode() ) RDFPrettyExporter.logger.info("DEBUG:   ...Ended RDF Export " + this.strName);

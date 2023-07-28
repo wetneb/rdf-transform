@@ -20,7 +20,7 @@
 
 package org.openrefine.rdf.model.exporter;
 
-import com.google.refine.exporters.Exporter;
+import org.openrefine.exporters.Exporter;
 
 import org.openrefine.rdf.model.Util;
 

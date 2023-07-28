@@ -20,9 +20,6 @@
 
 package org.openrefine.rdf.command;
 
-import java.io.IOException;
-
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -36,21 +33,14 @@ public class SuggestNamespaceCommand extends RDFTransformCommand {
     }
 
     @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    public void doGet(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String strPrefix = request.getParameter(Util.gstrPrefix);
         String strNamespace = RDFTransform.getGlobalContext().getNSManager().getNamespace(strPrefix);
 
-        String strSuggestion = null;
-        try {
-            strSuggestion =
-            "{ \"" + Util.gstrNamespace + "\" : " +  strNamespace + " }";
+        String strSuggestion = "{ \"" + Util.gstrNamespace + "\" : " +  strNamespace + " }";
 
-            // Send back to client...
-            SuggestNamespaceCommand.respondJSON( response, new CodeResponse(strSuggestion) );
-        }
-        catch (Exception ex) {
-            respondException(response, ex);
-        }
+        // Send back to client...
+        SuggestNamespaceCommand.respondJSON( response, 200, new CodeResponse(strSuggestion) );
     }
 
 }

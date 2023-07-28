@@ -26,23 +26,17 @@ import java.io.Writer;
 import java.nio.charset.Charset;
 import java.util.Properties;
 
-import org.openrefine.rdf.RDFTransform;
-import org.openrefine.rdf.model.Util;
-import org.openrefine.rdf.model.operation.ExportRDFRecordVisitor;
-import org.openrefine.rdf.model.operation.ExportRDFRowVisitor;
-import org.openrefine.rdf.model.operation.RDFVisitor;
-
-import com.google.refine.browsing.Engine;
-import com.google.refine.exporters.StreamExporter;
-import com.google.refine.exporters.WriterExporter;
-import com.google.refine.model.Project;
-
 import org.apache.commons.io.output.WriterOutputStream;
-
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.riot.system.StreamRDFWriter;
-
+import org.openrefine.ProjectMetadata;
+import org.openrefine.browsing.Engine;
+import org.openrefine.exporters.WriterExporter;
+import org.openrefine.model.Grid;
+import org.openrefine.rdf.RDFTransform;
+import org.openrefine.rdf.model.Util;
+import org.openrefine.rdf.model.operation.RDFVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +48,7 @@ import org.slf4j.LoggerFactory;
  *  memory and processing are perform no matter how large the project data.  Additionally, the memory can
  *  be optimized for a predetermined size to minimize the number of memory to persistent storage writes.
  */
-public class RDFStreamExporter extends RDFExporter implements WriterExporter, StreamExporter {
+public class RDFStreamExporter extends RDFExporter implements WriterExporter {
     private final static Logger logger = LoggerFactory.getLogger("RDFT:RDFStreamExporter");
 
     private OutputStream outputStream = null;
@@ -63,24 +57,15 @@ public class RDFStreamExporter extends RDFExporter implements WriterExporter, St
         super(format, strName);
     }
 
-    public void export(Project theProject, Properties options, Engine theEngine,
-                        OutputStream outputStream)
-            throws IOException {
-        if ( Util.isDebugMode() ) RDFStreamExporter.logger.info("DEBUG: Exporting " + this.strName + " via OutputStream");
-        this.outputStream = outputStream;
-        this.export(theProject, options, theEngine);
-    }
-
-    public void export(Project theProject, Properties options, Engine theEngine,
-                        Writer theWriter)
-             throws IOException
-    {
+    @Override
+    public void export(Grid grid, ProjectMetadata projectMetadata, long projectId, Properties options, Engine engine,
+            Writer writer) throws IOException {
         if ( Util.isDebugMode() ) RDFStreamExporter.logger.info("DEBUG: Exporting " + this.strName + " via Writer");
-        this.outputStream = new WriterOutputStream(theWriter, Charset.forName("UTF-8"));
-        this.export(theProject, options, theEngine);
+        this.outputStream = new WriterOutputStream(writer, Charset.forName("UTF-8"));
+        this.export(grid, options, engine, projectId);
     }
 
-    private void export(Project theProject, Properties options, Engine theEngine)
+    private void export(Grid grid, Properties options, Engine theEngine, long projectId)
             throws IOException
     {
         StreamRDF theWriter = null;
@@ -92,22 +77,14 @@ public class RDFStreamExporter extends RDFExporter implements WriterExporter, St
         }
         if ( Util.isDebugMode() ) RDFStreamExporter.logger.info("DEBUG:   Acquired writer: StreamRDFWriter.");
 
-        RDFTransform theTransform = RDFTransform.getRDFTransform(theProject);
+        RDFTransform theTransform = RDFTransform.getRDFTransform(grid, projectId);
         try {
             if ( Util.isDebugMode() ) RDFStreamExporter.logger.info("DEBUG:   Starting RDF Export...");
             theWriter.start();
 
             // Process all records/rows of data for statements...
-            RDFVisitor theVisitor = null;
-            if ( theProject.recordModel.hasRecords() ) {
-                if ( Util.isDebugMode() ) RDFStreamExporter.logger.info("DEBUG:     Process by Record Visitor...");
-                theVisitor = new ExportRDFRecordVisitor(theTransform, theWriter);
-            }
-            else {
-                if ( Util.isDebugMode() ) RDFStreamExporter.logger.info("DEBUG:     Process by Row Visitor...");
-                theVisitor = new ExportRDFRowVisitor(theTransform, theWriter);
-            }
-            theVisitor.buildModel(theProject, theEngine);
+            RDFVisitor theVisitor = new RDFVisitor(theTransform, theWriter);
+            theVisitor.buildModel(grid, theEngine, projectId, 0);
 
             theWriter.finish();
             if ( Util.isDebugMode() ) RDFStreamExporter.logger.info("DEBUG:   ...Ended RDF Export " + this.strName);
@@ -118,4 +95,5 @@ public class RDFStreamExporter extends RDFExporter implements WriterExporter, St
             throw new IOException(ex.getMessage(), ex);
         }
     }
+
 }

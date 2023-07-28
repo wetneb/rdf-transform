@@ -26,8 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.io.IOException;
 
-import com.google.refine.expr.ExpressionUtils;
-import com.google.refine.expr.ParsingException;
+import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.expr.ParsingException;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonGenerationException;
@@ -118,7 +118,7 @@ public class CellLiteralNode extends LiteralNode implements CellNode {
         Object results = null;
         try {
             results =
-                Util.evaluateExpression( this.theProject, this.strExpression, this.strColumnName, this.theRec.row() );
+                Util.evaluateExpression( this.theGrid, this.strExpression, this.strColumnName, this.theRec.row(), this.projectId );
         }
         catch (ParsingException ex) {
             // An cell might result in a ParsingException when evaluating an IRI expression.

@@ -34,10 +34,10 @@ import org.openrefine.rdf.model.ResourceNode;
 import org.openrefine.rdf.model.Util;
 import org.openrefine.rdf.model.vocab.Vocabulary;
 import org.openrefine.rdf.model.vocab.VocabularyList;
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.model.OverlayModel;
-import com.google.refine.model.Project;
-
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.model.Grid;
+import org.openrefine.model.Project;
+import org.openrefine.overlay.OverlayModel;
 import org.apache.jena.iri.IRI;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -109,17 +109,18 @@ public class RDFTransform implements OverlayModel {
 
     static public RDFTransform getRDFTransform(Project theProject) {
         synchronized(theProject) {
-            // Get the project's existing RDFTransform, if it exists...
-            RDFTransform theTransform = (RDFTransform) theProject.overlayModels.get(RDFTransform.EXTENSION);
-            if (theTransform == null) {
-                // Create a new RDFTransform for the project...
-                theTransform = new RDFTransform(theProject);
-
-                theProject.overlayModels.put(RDFTransform.EXTENSION, theTransform);
-                theProject.getMetadata().updateModified();
-            }
-            return theTransform;
+            return getRDFTransform(theProject.getCurrentGrid(), theProject.getId());
         }
+    }
+    
+    static public RDFTransform getRDFTransform(Grid grid, long projectId) {
+        // Get the project's existing RDFTransform, if it exists...
+        RDFTransform theTransform = (RDFTransform) grid.getOverlayModels().get(RDFTransform.EXTENSION);
+        if (theTransform == null) {
+            // Create a new RDFTransform for the project...
+            theTransform = new RDFTransform(projectId);
+        }
+        return theTransform;
     }
 
     static public RDFTransform load(Project theProject, JsonNode jnodeTransform) {
@@ -231,7 +232,7 @@ public class RDFTransform implements OverlayModel {
             theTransform = new RDFTransform();
         }
         else {
-            theTransform = new RDFTransform(theProject);
+            theTransform = new RDFTransform(theProject.getId());
         }
 
         //
@@ -364,7 +365,7 @@ public class RDFTransform implements OverlayModel {
         if ( Util.isVerbose(3) || Util.isDebugMode() ) RDFTransform.logger.info("Created empty transform.");
     }
 
-    public RDFTransform(Project theProject) {
+    public RDFTransform(long projectId) {
         // NOTE:
         //  When the Project is given, we attempt to initialize all the RDFTransform elements.
         //  When the Project is NOT given, we assume a reconstruction is occurring which should have
@@ -372,7 +373,7 @@ public class RDFTransform implements OverlayModel {
 
         String strSpace = "";
         String strContext = " for project";
-        if (theProject == null) {
+        if (projectId == 0L) {
             strSpace = "  ";
             strContext = "";
         }
@@ -384,11 +385,11 @@ public class RDFTransform implements OverlayModel {
 
         this.theNamespaces = RDFTransform.theGlobalContext.getPredefinedVocabularyManager().getPredefinedVocabularies().clone();
 
-        if (theProject != null) {
+        if (projectId != 0L) {
             // Copy the index of predefined vocabularies...
             //   Each project will have its own copy of these predefined vocabs to enable, delete, update...
             try {
-                RDFTransform.theGlobalContext.getVocabularySearcher().addPredefinedVocabulariesToProject(theProject.id);
+                RDFTransform.theGlobalContext.getVocabularySearcher().addPredefinedVocabulariesToProject(projectId);
             }
             catch(IOException ex) {
                 RDFTransform.logger.error("ERROR: Cannot add predefined vocabularies to transform!", ex);

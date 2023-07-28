@@ -20,7 +20,7 @@
 
 package org.openrefine.rdf.command;
 
-import com.google.refine.util.ParsingUtilities;
+import org.openrefine.util.ParsingUtilities;
 
 import org.openrefine.rdf.RDFTransform;
 import org.openrefine.rdf.model.Util;
